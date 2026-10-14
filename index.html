@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>救命！我被麦麦包围了！</title>
+<style>
+  :root{
+    --red:#DA291C; --yellow:#FFC72C; --paper:#FFF8E7; --ink:#3a2a12;
+    --good:#2e9e4f; --bad:#DA291C; --shadow:0 4px 0 rgba(0,0,0,.15);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:radial-gradient(circle at 50% 0%,#ffe9a8,#ffce3d 60%,#ffb800);
+    color:var(--ink); display:flex; justify-content:center; padding:8px;
+  }
+  #game{width:100%;max-width:660px;display:flex;flex-direction:column;gap:10px;}
+  header{
+    background:var(--red);color:#fff;border-radius:16px;padding:10px 14px;
+    box-shadow:var(--shadow);position:relative;overflow:hidden;
+  }
+  header h1{margin:0;font-size:23px;letter-spacing:1px;}
+  .sub{font-size:13px;opacity:.85;margin-top:3px;}
+  .stats{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .stat{background:rgba(255,255,255,.18);border-radius:10px;padding:4px 8px;font-size:12px;display:flex;gap:4px;align-items:center;}
+  .stat b{font-size:14px;}
+  .timebar{height:6px;background:rgba(255,255,255,.25);border-radius:4px;margin-top:8px;overflow:hidden;}
+  .timebar>i{display:block;height:100%;background:var(--yellow);width:0%;transition:width .15s linear;}
+
+  .queue{display:flex;gap:10px;overflow-x:auto;padding:6px 2px 10px;min-height:158px;}
+  .cust{
+    flex:0 0 auto;width:122px;background:var(--paper);border-radius:16px;padding:10px 6px;
+    box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;gap:5px;
+    border:2px solid transparent;animation:slidein .25s ease;
+  }
+  .cust.event{border-color:var(--red);background:#fff0d6;}
+  .cust .face{font-size:46px;line-height:1;}
+  .cust .tag{font-size:10px;color:var(--red);font-weight:700;}
+  .cust .order{font-size:30px;letter-spacing:-2px;min-height:34px;}
+  .cust .ctime{height:4px;width:100%;background:#e8d9b5;border-radius:3px;overflow:hidden;}
+  .cust .ctime>i{display:block;height:100%;background:var(--good);width:100%;}
+  @keyframes slidein{from{transform:translateX(30px);opacity:0;}to{transform:none;opacity:1;}}
+
+  .tray{
+    background:var(--paper);border-radius:16px;padding:10px 12px;box-shadow:var(--shadow);
+    display:flex;align-items:center;gap:10px;min-height:74px;
+  }
+  .tray .plate{font-size:32px;letter-spacing:-2px;flex:1;min-height:34px;}
+  .tray .empty{opacity:.45;font-size:13px;}
+  .btn{border:none;border-radius:12px;padding:12px 18px;font-size:16px;font-weight:700;
+    cursor:pointer;box-shadow:var(--shadow);transition:transform .05s;}
+  .btn:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.15);}
+  .btn.undo{background:#eee;color:#555;}
+  .btn.go{background:var(--red);color:#fff;flex:1;}
+
+  .menu{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+  .item{background:var(--paper);border-radius:14px;padding:10px 2px;box-shadow:var(--shadow);
+    display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;border:none;}
+  .item:active{transform:translateY(2px);}
+  .item .key{font-size:12px;font-weight:700;color:#fff;background:var(--red);border-radius:6px;padding:2px 6px;margin-bottom:2px;}
+  .item .e{font-size:34px;line-height:1;}
+  .item .n{font-size:11px;opacity:.7;text-align:center;line-height:1.1;}
+
+  .float{position:fixed;left:50%;top:40%;transform:translateX(-50%);font-size:28px;font-weight:800;
+    pointer-events:none;animation:pop .7s ease forwards;z-index:50;}
+  @keyframes pop{0%{opacity:0;transform:translate(-50%,10px) scale(.6);}
+    30%{opacity:1;transform:translate(-50%,-10px) scale(1.1);}
+    100%{opacity:0;transform:translate(-50%,-50px) scale(1);}}
+
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;justify-content:center;
+    align-items:center;z-index:100;padding:16px;}
+  .overlay.hide{display:none;}
+  .card{background:#fff;border-radius:20px;padding:22px;text-align:center;max-width:340px;width:100%;
+    box-shadow:0 10px 30px rgba(0,0,0,.3);}
+  .card h2{margin:0 0 6px;color:var(--red);}
+  .card p{font-size:13px;line-height:1.6;margin:6px 0;}
+  .card .big{font-size:40px;font-weight:800;color:var(--yellow);text-shadow:0 2px 0 var(--red);}
+  .card button{margin-top:14px;background:var(--red);color:#fff;border:none;border-radius:14px;
+    padding:12px 22px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:var(--shadow);}
+  .src{font-size:10px;opacity:.6;text-align:center;margin-top:4px;}
+
+  /* ---------- 首页（落地页，可长期停留，参考麦麦消消乐） ---------- */
+  .homepage{max-width:660px;width:100%;margin:0 auto;padding:10px 12px 36px;display:flex;flex-direction:column;gap:12px;}
+  .home-head{display:flex;align-items:center;gap:12px;}
+  .logo{width:50px;height:50px;border-radius:50%;background:var(--red);position:relative;flex:0 0 auto;
+    box-shadow:inset 0 -6px 0 rgba(0,0,0,.18),0 3px 8px rgba(0,0,0,.2);}
+  .logo::before{content:"M";color:#fff;font-weight:900;font-size:30px;line-height:50px;text-align:center;
+    display:block;font-family:"Times New Roman",serif;letter-spacing:-2px;}
+  .home-head h1{margin:0;font-size:22px;letter-spacing:1px;}
+  .home-head .sub{font-size:12px;opacity:.75;}
+  .menu-hero{display:grid;grid-template-columns:1.5fr .7fr;gap:12px;}
+  .card.hero-card{display:flex;flex-direction:column;justify-content:space-between;min-height:200px;text-align:left;max-width:none;}
+  .card.hero-side{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;max-width:none;}
+  .hero-title{font-size:24px;font-weight:900;line-height:1.15;color:var(--red);margin:0 0 6px;}
+  .hero-desc{font-size:13px;line-height:1.55;margin:0 0 10px;}
+  .badge{display:inline-block;background:var(--red);color:#fff;font-size:11px;padding:3px 10px;border-radius:999px;
+    letter-spacing:1px;margin-bottom:8px;align-self:flex-start;}
+  .cta{display:inline-flex;align-items:center;gap:8px;background:var(--red);color:#fff;border:none;cursor:pointer;
+    padding:12px 18px;border-radius:999px;font-weight:800;letter-spacing:1px;box-shadow:0 4px 0 #8b1a12;font-size:15px;
+    align-self:flex-start;}
+  .cta:active{transform:translateY(2px);box-shadow:0 2px 0 #8b1a12;}
+  .hero-emoji{font-size:60px;line-height:1;text-align:center;}
+  .levels-title{margin:6px 2px 0;font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--ink);}
+  .levels-title::before{content:"";width:6px;height:18px;background:var(--red);border-radius:3px;}
+  .levelgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:2px;}
+  .lvcard{background:var(--paper);border-radius:14px;padding:10px 12px;cursor:pointer;
+    border:2px solid transparent;box-shadow:var(--shadow);text-align:left;transition:transform .08s ease,border-color .12s;}
+  .lvcard:active{transform:scale(.98);}
+  .lvcard:hover{border-color:var(--yellow);}
+  .lvcard .lv{font-size:16px;font-weight:800;color:var(--red);}
+  .lvcard .lvname{font-size:12px;font-weight:700;opacity:.7;margin-left:6px;}
+  .lvcard .meta{font-size:11px;opacity:.85;margin-top:4px;line-height:1.5;}
+  .lvcard .badges{margin-top:5px;font-size:15px;letter-spacing:1px;}
+  .bestline{font-size:12px;opacity:.65;margin:2px 2px 0;text-align:center;}
+  footer{margin-top:10px;text-align:center;font-size:11px;color:#6b4a00;opacity:.85;line-height:1.6;}
+  .homeBtn{background:#fff;color:var(--red);border:none;border-radius:10px;padding:6px 12px;
+    font-weight:800;cursor:pointer;font-size:13px;box-shadow:var(--shadow);margin-bottom:6px;}
+  .homeBtn:active{transform:translateY(2px);}
+  @media (max-width:520px){ .menu-hero{grid-template-columns:1fr;} .home-head h1{font-size:19px;} }
+</style>
+</head>
+<body>
+<!-- 首页：落地页，可长期停留（参考麦麦消消乐） -->
+<div id="home" class="homepage">
+  <header class="home-head">
+    <div class="logo" aria-hidden="true"></div>
+    <div>
+      <h1>救命！我被麦麦包围了！</h1>
+      <div class="sub">基于麦当劳中国 MCP 的互动小游戏 ｜ 麦当劳程序员节专项</div>
+    </div>
+  </header>
+
+  <div class="menu-hero">
+    <div class="card hero-card">
+      <span class="badge">McDonald's × WorkBuddy</span>
+      <h2 class="hero-title">被订单淹没的店员 🍔</h2>
+      <p class="hero-desc">顾客从四面涌来，看他们头顶气泡把单品拼进餐盘，在耐心耗尽前「交付」！<br><b>8 关 + 无尽模式</b>，订单越来越复杂，还会出现 🌊 麦麦洪水。</p>
+      <p class="hero-desc" style="font-size:12px;opacity:.75;">
+        ⌨️ 键盘 Q W E R T / G H J K L 快速点单 · 🔥 连续正确触发连击倍率 · 🍱 真实菜单数据底座（MCP 注入）
+      </p>
+      <button class="cta" id="homeStart">▶ 开始游戏</button>
+    </div>
+    <div class="card hero-side">
+      <div class="hero-emoji">🍔🌊⚡</div>
+      <div style="font-size:13px;opacity:.7;text-align:center;margin-top:8px;">单局 1–3 分钟<br>适合碎片时间</div>
+    </div>
+  </div>
+
+  <div class="levels-title">关卡地图</div>
+  <div class="levelgrid" id="levelGrid"></div>
+  <p class="bestline" id="homeBest"></p>
+
+  <footer>© 2026 救命！我被麦麦包围了！· 仅供麦当劳程序员创意开发大赛展示与互动使用 · 非官方产品，仅供参考</footer>
+</div>
+
+<!-- 游戏区 -->
+<div id="game" style="display:none">
+  <header>
+    <button class="homeBtn" id="backHome">← 首页</button>
+    <h1>🍔 救命！我被麦麦包围了！</h1>
+    <div class="sub">你是被订单淹没的店员 · 键盘 Q W E R T / G H J K L 快速点单 · 连击冲分</div>
+    <div class="stats">
+      <div class="stat">⭐ <b id="score">0</b></div>
+      <div class="stat">🔥 连击 <b id="combo">0</b></div>
+      <div class="stat">❤️ <b id="hp">5</b></div>
+      <div class="stat">📍 关卡 <b id="wave">1</b></div>
+      <div class="stat">🎯 <b id="progress">0/4</b></div>
+    </div>
+    <div class="timebar"><i id="timebar"></i></div>
+  </header>
+
+  <div class="queue" id="queue"></div>
+
+  <div class="tray">
+    <div class="plate" id="plate"><span class="empty">点下方菜单（或按键盘 Q W E R T / G H J K L）把单品放进餐盘…</span></div>
+    <button class="btn undo" id="undo">↩ 撤销</button>
+    <button class="btn go" id="deliver">交付 ✅</button>
+  </div>
+
+  <div class="menu" id="menu"></div>
+  <div class="src" id="src">数据来源：演示菜单池（在 WorkBuddy 中说“开始麦麦包围”可注入真实麦当劳菜单）</div>
+</div>
+
+<div class="overlay hide" id="overlay">
+  <div class="card">
+    <h2 id="ovTitle">准备好了吗？</h2>
+    <p id="ovText">订单会从四面涌来，按顾客头顶的气泡把单品装进餐盘，<br>在顾客耐心耗尽前点「交付」。<br>键盘 <b>Q W E R T</b>（左手）/ <b>G H J K L</b>（右手）快速点单，空格=交付，退格=撤销。</p>
+    <div class="big" id="ovScore" style="display:none">0</div>
+    <p id="ovRank" style="display:none"></p>
+    <button id="ovBtn">开始营业 ▶</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ---------- 默认演示单品池（无真实 MCP 注入时回退） ----------
+const DEFAULT_MENU = [
+  {k:"burger", e:"🍔", n:"巨无霸"},
+  {k:"fries",  e:"🍟", n:"薯条"},
+  {k:"wings",  e:"🍗", n:"麦辣鸡翅"},
+  {k:"cola",   e:"🥤", n:"可乐"},
+  {k:"salad",  e:"🥗", n:"沙拉"},
+  {k:"ice",    e:"🍦", n:"麦旋风"},
+  {k:"dog",    e:"🌭", n:"热狗"},
+  {k:"pie",    e:"🥧", n:"苹果派"},
+  {k:"cheese", e:"🧀", n:"芝士条"},
+  {k:"chick",  e:"🥪", n:"麦香鸡"},
+];
+const FACES = ["🧑","🧒","👴","👩","🧑‍🦱","👨‍🦳","👧","🧔"];
+
+// ---------- 关卡配置（闯关式） ----------
+// goal=本关需服务人数；n=单笔订单最多单品数(实际 1..n)；maxC=同时在场顾客上限；
+// gap=生成间隔(ms，越小越快)；ctime=单顾客耐心(ms)；burst=是否触发麦麦洪水；dup=是否允许同款重复
+const LEVELS = [
+  {name:"新手班表",   goal:4,  n:2, maxC:2, gap:3200, ctime:26000, burst:false, dup:false},
+  {name:"午市前奏",   goal:6,  n:2, maxC:2, gap:2800, ctime:24000, burst:false, dup:false},
+  {name:"麦辣开场",   goal:7,  n:3, maxC:3, gap:2500, ctime:22000, burst:true,  dup:false},
+  {name:"高峰来袭",   goal:8,  n:3, maxC:3, gap:2200, ctime:20000, burst:true,  dup:false},
+  {name:"重复风暴",   goal:9,  n:3, maxC:4, gap:2000, ctime:18000, burst:true,  dup:true},
+  {name:"洪水初临",   goal:10, n:4, maxC:4, gap:1800, ctime:16000, burst:true,  dup:true},
+  {name:"满堂沸腾",   goal:12, n:4, maxC:5, gap:1600, ctime:15000, burst:true,  dup:true},
+  {name:"终极围城",   goal:14, n:5, maxC:5, gap:1400, ctime:14000, burst:true,  dup:true},
+];
+function getLevelCfg(lv){
+  if(lv<=LEVELS.length) return LEVELS[lv-1];
+  const over = lv-LEVELS.length;
+  return {goal:14+over*2, n:5, maxC:5, gap:Math.max(900,1400-over*100),
+          ctime:Math.max(10000,14000-over*300), burst:true, dup:true};
+}
+// 键盘映射：第一排左手 Q W E R T，第二排右手 G H J K L
+const KEY_MAP = ["q","w","e","r","t","g","h","j","k","l"];
+const GAME_KEY = "mcd_surrounded_menu";
+
+// ---------- 状态 ----------
+let menu = DEFAULT_MENU.slice();
+let events = [];           // 注入的活动单名称
+let customers = [];
+let tray = [];
+let score = 0, combo = 0, maxCombo = 0, hp = 5, level = 1, levelServed = 0;
+let phase = "home";        // home | playing | cleared | over
+let spawnTimer = null, custId = 0, servedCount = 0;
+
+// ---------- DOM ----------
+const $ = id => document.getElementById(id);
+const queueEl = $("queue"), menuEl = $("menu"), plateEl = $("plate");
+
+function loadMenu(){
+  try{
+    const raw = localStorage.getItem(GAME_KEY);
+    if(raw){
+      const arr = JSON.parse(raw);
+      if(Array.isArray(arr) && arr.length){ menu = arr; $("src").textContent = "数据来源：麦当劳真实菜单（经 MCP 注入）"; return; }
+    }
+  }catch(e){}
+  menu = DEFAULT_MENU.slice();
+  $("src").textContent = "数据来源：演示菜单池（在 WorkBuddy 中说“开始麦麦包围”可注入真实麦当劳菜单）";
+}
+function loadEvents(){
+  try{ const r = localStorage.getItem("mcd_surrounded_events"); if(r){ const a=JSON.parse(r); if(Array.isArray(a)) events=a; } }catch(e){}
+}
+
+// ---------- 渲染 ----------
+function renderMenu(){
+  menuEl.innerHTML = "";
+  menu.forEach((m,i)=>{
+    const b = document.createElement("button");
+    const key = KEY_MAP[i] ? KEY_MAP[i].toUpperCase() : "";
+    b.className = "item";
+    b.innerHTML = `<div class="key">${key}</div><div class="e">${m.e}</div><div class="n">${m.n}</div>`;
+    b.onclick = ()=>{ addToTray(m.k); b.blur(); };
+    menuEl.appendChild(b);
+  });
+}
+function renderTray(){
+  if(!tray.length){ plateEl.innerHTML = '<span class="empty">点下方菜单（或按键盘 Q W E R T / G H J K L）把单品放进餐盘…</span>'; return; }
+  plateEl.textContent = tray.map(k=>menu.find(m=>m.k===k).e).join("");
+}
+function syncCustomers(){ // 只在顾客增减时增量增删 DOM，避免每帧重建导致入场动画重复播放（闪烁）
+  [...queueEl.children].forEach(ch=>{ if(!customers.some(c=>c.el===ch)) ch.remove(); });
+  customers.forEach((c,i)=>{
+    if(c.el && c.el.parentNode===queueEl && queueEl.children[i]===c.el) return; // 已就位，复用
+    if(c.el) c.el.remove();
+    const div = document.createElement("div");
+    div.className = "cust" + (c.event?" event":"");
+    const orderStr = c.order.map(k=>menu.find(m=>m.k===k).e).join("");
+    div.innerHTML = `<div class="face">${c.face}</div>` +
+      (c.event?`<div class="tag">★限定</div>`:`<div class="tag">&nbsp;</div>`) +
+      `<div class="order">${orderStr}</div>` +
+      `<div class="ctime"><i style="width:${Math.max(0,c.time/c.max*100)}%"></i></div>`;
+    c.el = div;
+    queueEl.insertBefore(div, queueEl.children[i]||null);
+  });
+}
+function updatePatience(){ // 每 tick 只更新耐心条宽度，不重建
+  customers.forEach(c=>{
+    if(c.el){ const bar=c.el.querySelector(".ctime i"); if(bar) bar.style.width=Math.max(0,c.time/c.max*100)+"%"; }
+  });
+}
+
+// ---------- 游戏逻辑 ----------
+function addToTray(k){ tray.push(k); renderTray(); }
+function undoTray(){ tray.pop(); renderTray(); }
+
+function deliver(){
+  if(phase!=="playing" || !customers.length) return;
+  const c = customers[0];
+  const ok = tray.length===c.order.length && c.order.every((k,i)=>tray[i]===k);
+  if(ok){
+    const gain = Math.round(c.order.length * 10 * Math.min(3, 1+combo*0.1) * (c.event?2:1));
+    score += gain; combo++; maxCombo = Math.max(maxCombo, combo);
+    servedCount++; levelServed++;
+    floatText(`+${gain}${c.event?" ★":""}`, "var(--good)");
+    customers.shift();
+    if(levelServed >= getLevelCfg(level).goal){ syncCustomers(); updateStats(); levelComplete(); return; }
+  }else{
+    hp--; combo = 0;
+    floatText("✗ 装错了!", "var(--bad)");
+  }
+  tray = []; renderTray(); syncCustomers(); updateStats();
+  if(hp<=0) gameOver();
+}
+
+function spawnCustomer(){
+  if(phase!=="playing") return;
+  const cfg = getLevelCfg(level);
+  if(customers.length >= cfg.maxC) return;
+  const n = Math.min(cfg.n, 1 + Math.floor(Math.random()*cfg.n)); // 实际 1..n 个单品
+  const picks = [];
+  const pool = menu.map(m=>m.k);
+  if(cfg.dup){
+    for(let i=0;i<n;i++) picks.push(pool[Math.floor(Math.random()*pool.length)]);
+  } else {
+    while(picks.length<n){ const k=pool[Math.floor(Math.random()*pool.length)]; if(!picks.includes(k)) picks.push(k); }
+  }
+  const isEvent = events.length && Math.random()<0.18;
+  customers.push({
+    id:++custId, face:FACES[Math.floor(Math.random()*FACES.length)],
+    order:picks, time:cfg.ctime, max:cfg.ctime, event:isEvent,
+    eventName: isEvent?events[Math.floor(Math.random()*events.length)]:""
+  });
+  syncCustomers();
+}
+
+function spawnBurst(){ // 麦麦洪水：填满当前剩余空位
+  const cfg = getLevelCfg(level);
+  const room = Math.max(0, cfg.maxC - customers.length);
+  const count = Math.min(room, 2 + Math.floor(Math.random()*2));
+  for(let i=0;i<count;i++) spawnCustomer();
+  if(count>0) floatText("🌊 麦麦洪水来袭!", "var(--red)");
+}
+
+function tick(){
+  if(phase!=="playing") return;
+  const cfg = getLevelCfg(level);
+  // 顾客耐心倒计时
+  let changed=false;
+  for(const c of customers){ c.time-=100; if(c.time<=0){ c.dead=true; changed=true; } }
+  const before = customers.length;
+  customers = customers.filter(c=>!c.dead);
+  if(customers.length<before){ hp--; combo=0; floatText("超时!顾客跑了","var(--bad)"); if(hp<=0){updateStats();gameOver();return;} }
+  // 生成节奏
+  if(Math.random() < 100/cfg.gap){ spawnCustomer(); }
+  // 洪水触发
+  if(cfg.burst && Math.random()<0.01){ spawnBurst(); }
+  if(changed) syncCustomers();
+  updatePatience(); updateStats();
+}
+
+function updateStats(){
+  $("score").textContent = score;
+  $("combo").textContent = combo;
+  $("hp").textContent = "❤️".repeat(Math.max(0,hp)) || "0";
+  $("wave").textContent = level;
+  $("progress").textContent = levelServed + "/" + getLevelCfg(level).goal;
+  $("timebar").style.width = Math.min(100, levelServed/getLevelCfg(level).goal*100) + "%";
+}
+
+function floatText(txt,color){
+  const f=document.createElement("div"); f.className="float"; f.textContent=txt; f.style.color=color;
+  document.body.appendChild(f); setTimeout(()=>f.remove(),700);
+}
+
+function startGame(){
+  loadMenu(); loadEvents();
+  customers=[]; tray=[]; score=0; combo=0; maxCombo=0; hp=5; level=1; levelServed=0; custId=0; servedCount=0;
+  phase="playing";
+  renderMenu(); renderTray(); syncCustomers(); updateStats();
+  showPage("game");
+  $("overlay").classList.add("hide");
+  $("ovBtn").onclick = startGame;
+  spawnCustomer(); setTimeout(spawnCustomer, 1200);
+  if(spawnTimer) clearInterval(spawnTimer);
+  spawnTimer = setInterval(tick, 100);
+}
+
+function levelComplete(){ // 本关达标
+  phase="cleared";
+  $("ovTitle").textContent = `🎉 第 ${level} 关通过！`;
+  $("ovText").innerHTML = `本关服务 <b>${levelServed}</b> 位顾客达成目标！当前得分 <b>${score}</b> ⭐，最高连击 <b>${maxCombo}</b>。<br>奖励 ❤️+1（上限5）。`;
+  $("ovScore").style.display="block"; $("ovScore").textContent = "❤️".repeat(Math.max(0,hp));
+  $("ovRank").style.display="block"; $("ovRank").textContent = `准备进入第 ${level+1} 关，订单会更复杂哦～`;
+  $("ovBtn").textContent = "进入下一关 ▶";
+  $("ovBtn").onclick = nextLevel;
+  saveBest();
+  $("overlay").classList.remove("hide");
+}
+function nextLevel(){
+  level++; levelServed=0; customers=[]; tray=[];
+  hp = Math.min(5, hp+1);
+  phase="playing";
+  renderTray(); syncCustomers(); updateStats();
+  $("overlay").classList.add("hide");
+  spawnCustomer(); setTimeout(spawnCustomer, 1000);
+}
+
+function gameOver(){
+  phase="over";
+  if(spawnTimer) clearInterval(spawnTimer);
+  const rank = score>600?"S":score>400?"A":score>220?"B":"C";
+  $("ovTitle").textContent = "营业结束！";
+  $("ovText").innerHTML = `你扛到了第 <b>${level}</b> 关，服务 <b>${servedCount}</b> 位顾客，最高连击 <b>${maxCombo}</b>。`;
+  $("ovScore").style.display="block"; $("ovScore").textContent = score+" ⭐";
+  $("ovRank").style.display="block"; $("ovRank").textContent = "评级：" + rank + (score>=600?" 大神级店员！":score>=400?" 金牌店员":score>=220?" 熟练工":" 实习店员");
+  $("ovBtn").textContent = "回到关卡选择 ↻";
+  $("ovBtn").onclick = goHome;
+  saveBest();
+  $("overlay").classList.remove("hide");
+}
+
+// ---------- 关卡选择首页 ----------
+// 统一页面切换：home=落地页，game=游戏区（封装显隐逻辑，避免散落各处）
+function showPage(name){
+  if(name==="home"){ $("home").style.display="flex"; $("game").style.display="none"; }
+  else { $("home").style.display="none"; $("game").style.display="flex"; }
+}
+function buildHome(){
+  loadEvents();
+  const g = $("levelGrid"); g.innerHTML = "";
+  for(let lv=1; lv<=LEVELS.length; lv++){
+    const c = getLevelCfg(lv);
+    const badges = [];
+    if(c.burst) badges.push("🌊");
+    if(c.dup)   badges.push("🔁");
+    if(events.length && lv>=3) badges.push("★");
+    const card = document.createElement("div");
+    card.className = "lvcard";
+    card.innerHTML = `<div class="lv">第 ${lv} 关<span class="lvname">${LEVELS[lv-1].name}</span></div>` +
+      `<div class="meta">🎯 目标 ${c.goal} 人<br>🍔 每单 ≤${c.n} 件<br>⏱ 耐心 ${Math.round(c.ctime/1000)}s</div>` +
+      (badges.length ? `<div class="badges">${badges.join(" ")}</div>` : "");
+    card.onclick = ()=> startGameAt(lv);
+    g.appendChild(card);
+  }
+  // 无尽模式入口
+  const last = document.createElement("div");
+  last.className = "lvcard";
+  last.innerHTML = `<div class="lv">第 9 关+<span class="lvname">永不停业</span></div>` +
+    `<div class="meta">🌊 洪水 + 🔁 重复<br>订单越来越快<br>看你能扛几关</div>` +
+    `<div class="badges">🔥</div>`;
+  last.onclick = ()=> startGameAt(LEVELS.length+1);
+  g.appendChild(last);
+  // 历史最佳
+  try{
+    const b = JSON.parse(localStorage.getItem("mcd_surrounded_best")||"{}");
+    $("homeBest").textContent = b.score ? `历史最佳：${b.score}⭐ ｜ 连击 ${b.combo} ｜ 到第 ${b.wave} 关` : "";
+  }catch(e){}
+}
+function goHome(){
+  phase = "home";
+  if(spawnTimer){ clearInterval(spawnTimer); spawnTimer = null; }
+  buildHome();
+  showPage("home");
+  $("overlay").classList.add("hide");
+}
+function startGameAt(lv){
+  loadMenu(); loadEvents();
+  customers=[]; tray=[]; score=0; combo=0; maxCombo=0; hp=5; level=lv; levelServed=0; custId=0; servedCount=0;
+  phase="playing";
+  renderMenu(); renderTray(); syncCustomers(); updateStats();
+  showPage("game");
+  $("overlay").classList.add("hide");
+  spawnCustomer(); setTimeout(spawnCustomer, 1200);
+  if(spawnTimer) clearInterval(spawnTimer);
+  spawnTimer = setInterval(tick, 100);
+}
+function saveBest(){
+  try{
+    const b = JSON.parse(localStorage.getItem("mcd_surrounded_best")||"{}");
+    b.score=Math.max(b.score||0,score); b.combo=Math.max(b.combo||0,maxCombo); b.wave=Math.max(b.wave||0,level);
+    localStorage.setItem("mcd_surrounded_best", JSON.stringify(b));
+  }catch(e){}
+}
+
+// ---------- 绑定 ----------
+$("deliver").onclick = ()=>{ deliver(); $("deliver").blur(); };
+$("undo").onclick = ()=>{ undoTray(); $("undo").blur(); };
+$("ovBtn").onclick = startGame;
+$("homeStart").onclick = ()=> startGameAt(1);
+$("backHome").onclick = ()=> goHome();
+
+// 键盘快捷键：第一排 Q W E R T（左手），第二排 G H J K L（右手）；空格/回车=交付，退格=撤销
+document.addEventListener("keydown", e=>{
+  if(phase!=="playing") return;
+  const k = e.key.toLowerCase();
+  // 回车/空格 = 直接交付（先让当前焦点按钮失焦，避免重复触发）
+  if(k===" "||k==="enter"){ e.preventDefault(); if(document.activeElement&&document.activeElement!==document.body) document.activeElement.blur(); deliver(); return; }
+  if(k==="backspace"){ e.preventDefault(); undoTray(); return; }
+  const idx = KEY_MAP.indexOf(k);
+  if(idx>=0 && idx<menu.length){ addToTray(menu[idx].k); }
+});
+
+// 支持 URL ?config= 注入（由 Skill 生成的菜单 JSON 经 base64 传入）
+(function injectFromURL(){
+  try{
+    const p=new URLSearchParams(location.search).get("config");
+    if(p){ const arr=JSON.parse(decodeURIComponent(escape(atob(p)))); if(Array.isArray(arr)&&arr.length) localStorage.setItem(GAME_KEY, JSON.stringify(arr)); }
+  }catch(e){}
+})();
+// 展示历史最佳
+(function showBest(){
+  try{ const b=JSON.parse(localStorage.getItem("mcd_surrounded_best")||"{}");
+    if(b.score) $("src").textContent += ` ｜ 历史最佳 ${b.score}⭐/连击${b.combo}/关${b.wave}`;
+  }catch(e){}
+})();
+loadMenu();
+goHome();
+</script>
+</body>
+</html>
